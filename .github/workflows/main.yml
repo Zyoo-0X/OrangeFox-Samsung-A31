@@ -61,6 +61,13 @@ jobs:
           lunch twrp_a31-eng
           mka adbd recoveryimage -j$(nproc)
 
+      - name: Show ramdisk size breakdown
+        if: always()
+        run: |
+          cd $FOX_DIR/out/target/product/a31
+          ls -l ramdisk-recovery.img kernel dtb.img recovery.img 2>/dev/null
+          du -a recovery/root 2>/dev/null | sort -rn | head -40
+
       - name: Upload files
         uses: actions/upload-artifact@v4
         with:

@@ -180,3 +180,4 @@ OF_CLOCK_POS := 1
 OF_ALLOW_DISABLE_NAVBAR := 0
 OF_QUICK_BACKUP_LIST := /boot;/data;
 OF_FL_PATH1 := /tmp/recovery/fox_flash
+FOX_DELETE_MAGISK_ADDON := 1

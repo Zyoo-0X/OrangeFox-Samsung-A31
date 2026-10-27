@@ -1,0 +1,72 @@
+name: OrangeFox - Build A31 (Zyoo-0X)
+
+on:
+  workflow_dispatch:
+
+env:
+  FOX_DIR: /home/runner/fox
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+    steps:
+      - name: Checkout device tree
+        uses: actions/checkout@v4
+        with:
+          path: dt
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h /
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git gnupg flex bison build-essential zip curl \
+            zlib1g-dev libc6-dev-i386 libncurses5 x11proto-core-dev libx11-dev \
+            lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig \
+            python3 python-is-python3 bc rsync lz4 cpio ccache
+          sudo curl -s https://storage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
+          sudo chmod a+x /usr/local/bin/repo
+          git config --global user.name "Zyoo-0X"
+          git config --global user.email "zyoo@users.noreply.github.com"
+
+      - name: Sync OrangeFox 12.1
+        run: |
+          git clone https://gitlab.com/OrangeFox/sync.git ~/sync
+          cd ~/sync
+          ./orangefox_sync.sh --branch 12.1 --path $FOX_DIR
+
+      - name: Add device tree
+        run: |
+          mkdir -p $FOX_DIR/device/samsung/a31
+          rsync -a --exclude='.git' --exclude='.github' $GITHUB_WORKSPACE/dt/ $FOX_DIR/device/samsung/a31/
+          chmod +x $FOX_DIR/device/samsung/a31/mkbootimg
+          ls -la $FOX_DIR/device/samsung/a31 $FOX_DIR/device/samsung/a31/prebuilt
+
+      - name: Build recovery
+        run: |
+          cd $FOX_DIR
+          set +e
+          source build/envsetup.sh
+          set -e
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export LC_ALL=C
+          export FOX_BUILD_DEVICE=a31
+          export FOX_REMOVE_AAPT=1
+          export OF_MAINTAINER="Zyoo-0X"
+          lunch twrp_a31-eng
+          mka adbd recoveryimage -j$(nproc)
+
+      - name: Upload files
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangeFox-A31-Zyoo-0X
+          if-no-files-found: error
+          path: |
+            ${{ env.FOX_DIR }}/out/target/product/a31/recovery.img
+            ${{ env.FOX_DIR }}/out/target/product/a31/recovery.tar
+            ${{ env.FOX_DIR }}/out/target/product/a31/OrangeFox-*.zip
